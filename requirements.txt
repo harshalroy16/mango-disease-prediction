@@ -1,10 +1,8 @@
 tensorflow==2.18.0
-streamlit
-numpy
-pandas
-matplotlib
-opencv-python
+fastapi
+uvicorn
+python-multipart
 pillow
-reportlab
-scikit-learn
+numpy
+opencv-python
 huggingface_hub
