@@ -1,0 +1,9 @@
+tensorflow==2.19.0
+streamlit
+numpy
+pandas
+matplotlib
+opencv-python
+pillow
+reportlab
+scikit-learn
