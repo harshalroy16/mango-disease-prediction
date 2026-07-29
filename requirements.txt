@@ -7,3 +7,4 @@ opencv-python
 pillow
 reportlab
 scikit-learn
+huggingface_hub
