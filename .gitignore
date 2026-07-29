@@ -4,4 +4,4 @@ __pycache__/
 .streamlit/
 uploads/
 *.csv
-models/*.keras
+models/
