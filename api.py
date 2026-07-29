@@ -1,49 +1,19 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, UploadFile, File
 from PIL import Image
 import tensorflow as tf
-from huggingface_hub import hf_hub_download
 import os
 
 from utils.image_processing import preprocess_image
 from utils.predictor import predict_disease
 
-
-app = FastAPI(
-    title="Mango Disease Prediction API",
-    description="AI-based Mango Leaf Disease Detection API",
-    version="1.0"
-)
+from huggingface_hub import hf_hub_download
 
 
-# -----------------------------
-# CORS (For Lovable Frontend)
-# -----------------------------
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # Later we can restrict to Lovable URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="Mango Disease Prediction API")
 
 
-# -----------------------------
-# Download & Load Model
-# -----------------------------
+model = None
 
-MODEL_PATH = hf_hub_download(
-    repo_id="harshalroy16/mango-disease-model",
-    filename="mango_disease_model.keras"
-)
-
-model = tf.keras.models.load_model(MODEL_PATH)
-
-
-# -----------------------------
-# Disease Classes
-# -----------------------------
 
 class_names = [
     "Anthracnose",
@@ -57,9 +27,24 @@ class_names = [
 ]
 
 
-# -----------------------------
-# Home Route
-# -----------------------------
+def load_model():
+    global model
+
+    if model is None:
+        print("Loading model...")
+
+        model_path = hf_hub_download(
+            repo_id="harshalroy16/mango-disease-model",
+            filename="mango_disease_model.keras"
+        )
+
+        model = tf.keras.models.load_model(model_path)
+
+        print("Model loaded successfully")
+
+    return model
+
+
 
 @app.get("/")
 def home():
@@ -69,33 +54,23 @@ def home():
     }
 
 
-# -----------------------------
-# Prediction Route
-# -----------------------------
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    try:
+    model = load_model()
 
-        image = Image.open(file.file).convert("RGB")
+    image = Image.open(file.file).convert("RGB")
 
-        img = preprocess_image(image)
+    img = preprocess_image(image)
 
-        disease, confidence = predict_disease(
-            model,
-            img,
-            class_names
-        )
+    disease, confidence = predict_disease(
+        model,
+        img,
+        class_names
+    )
 
-        return {
-            "disease": disease,
-            "confidence": round(float(confidence), 2)
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    return {
+        "disease": disease,
+        "confidence": round(float(confidence),2)
+    }
