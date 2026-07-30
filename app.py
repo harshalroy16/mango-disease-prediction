@@ -9,7 +9,6 @@ from utils.predictor import predict_disease
 from utils.history import save_prediction, load_history
 from utils.pdf_report import generate_pdf
 
-
 from disease_info import disease_info
 
 
@@ -108,7 +107,24 @@ Technologies:
 # -----------------------------
 # Title
 # -----------------------------
+# -----------------------------
+# Project Banner
+# -----------------------------
+if os.path.exists("assets/mango_banner.png"):
+
+    st.image(
+        "assets/mango_banner.png",
+        use_container_width=True
+    )
+
 st.title("🥭 AI Mango Disease Prediction System")
+tab1, tab2, tab3 = st.tabs(
+    [
+        "🔍 Prediction",
+        "📊 Analytics",
+        "📜 History"
+    ]
+)
 
 st.write(
     "Upload a mango leaf image and the AI model will predict the disease."
@@ -365,6 +381,19 @@ st.dataframe(
     use_container_width=True
 )
 # -----------------------------
+# Download History CSV
+# -----------------------------
+if len(history) > 0:
+
+    csv = history.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        label="📥 Download Prediction History CSV",
+        data=csv,
+        file_name="mango_prediction_history.csv",
+        mime="text/csv"
+    )
+# -----------------------------
 # Export History CSV
 # -----------------------------
 if len(history) > 0:
@@ -414,4 +443,3 @@ if len(history) > 0:
 
 
     st.pyplot(fig)
-    
