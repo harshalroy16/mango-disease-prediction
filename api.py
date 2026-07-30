@@ -1,19 +1,15 @@
 from fastapi import FastAPI, UploadFile, File
 from PIL import Image
 import tensorflow as tf
-import os
-
-from utils.image_processing import preprocess_image
-from utils.predictor import predict_disease
+import numpy as np
 
 from huggingface_hub import hf_hub_download
 
+from utils.image_processing import preprocess_image
 
 app = FastAPI(title="Mango Disease Prediction API")
 
-
-model = None
-
+interpreter = None
 
 class_names = [
     "Anthracnose",
@@ -28,22 +24,24 @@ class_names = [
 
 
 def load_model():
-    global model
+    global interpreter
 
-    if model is None:
-        print("Loading model...")
+    if interpreter is None:
+        print("Downloading TFLite model...")
 
         model_path = hf_hub_download(
             repo_id="harshalroy16/mango-disease-model",
-            filename="mango_disease_model.keras"
+            filename="mango_disease_model.tflite"
         )
 
-        model = tf.keras.models.load_model(model_path)
+        print("Loading interpreter...")
 
-        print("Model loaded successfully")
+        interpreter = tf.lite.Interpreter(model_path=model_path)
+        interpreter.allocate_tensors()
 
-    return model
+        print("TFLite model loaded.")
 
+    return interpreter
 
 
 @app.get("/")
@@ -54,23 +52,34 @@ def home():
     }
 
 
-
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    model = load_model()
+    interpreter = load_model()
 
     image = Image.open(file.file).convert("RGB")
 
-    img = preprocess_image(image)
+    img = preprocess_image(image).astype(np.float32)
 
-    disease, confidence = predict_disease(
-        model,
-        img,
-        class_names
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    interpreter.set_tensor(
+        input_details[0]["index"],
+        img
     )
 
+    interpreter.invoke()
+
+    prediction = interpreter.get_tensor(
+        output_details[0]["index"]
+    )[0]
+
+    predicted_index = int(np.argmax(prediction))
+
+    confidence = float(np.max(prediction) * 100)
+
     return {
-        "disease": disease,
-        "confidence": round(float(confidence),2)
+        "disease": class_names[predicted_index],
+        "confidence": round(confidence, 2)
     }
