@@ -1,16 +1,34 @@
 from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import tensorflow as tf
 import numpy as np
 
 from huggingface_hub import hf_hub_download
-
 from utils.image_processing import preprocess_image
 
+
+# -----------------------------
+# FastAPI App
+# -----------------------------
 app = FastAPI(title="Mango Disease Prediction API")
 
-interpreter = None
 
+# -----------------------------
+# CORS Configuration
+# -----------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# -----------------------------
+# Model Classes
+# -----------------------------
 class_names = [
     "Anthracnose",
     "Bacterial Canker",
@@ -21,6 +39,12 @@ class_names = [
     "Powdery Mildew",
     "Sooty Mould"
 ]
+
+
+# -----------------------------
+# Load TFLite Model
+# -----------------------------
+interpreter = None
 
 
 def load_model():
@@ -44,6 +68,9 @@ def load_model():
     return interpreter
 
 
+# -----------------------------
+# Home Route
+# -----------------------------
 @app.get("/")
 def home():
     return {
@@ -52,34 +79,51 @@ def home():
     }
 
 
+# -----------------------------
+# Prediction API
+# -----------------------------
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    try:
+        interpreter = load_model()
 
-    interpreter = load_model()
+        # Read image
+        image = Image.open(file.file).convert("RGB")
 
-    image = Image.open(file.file).convert("RGB")
+        # Preprocess image
+        img = preprocess_image(image).astype(np.float32)
 
-    img = preprocess_image(image).astype(np.float32)
+        # Get model details
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
 
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+        # Set input
+        interpreter.set_tensor(
+            input_details[0]["index"],
+            img
+        )
 
-    interpreter.set_tensor(
-        input_details[0]["index"],
-        img
-    )
+        # Run prediction
+        interpreter.invoke()
 
-    interpreter.invoke()
+        # Get output
+        prediction = interpreter.get_tensor(
+            output_details[0]["index"]
+        )[0]
 
-    prediction = interpreter.get_tensor(
-        output_details[0]["index"]
-    )[0]
+        predicted_index = int(np.argmax(prediction))
+        confidence = float(np.max(prediction) * 100)
 
-    predicted_index = int(np.argmax(prediction))
+        return {
+            "success": True,
+            "disease": class_names[predicted_index],
+            "confidence": round(confidence, 2)
+        }
 
-    confidence = float(np.max(prediction) * 100)
+    except Exception as e:
+        print("Prediction Error:", str(e))
 
-    return {
-        "disease": class_names[predicted_index],
-        "confidence": round(confidence, 2)
-    }
+        return {
+            "success": False,
+            "error": str(e)
+        }
