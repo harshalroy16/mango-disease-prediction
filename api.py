@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import tensorflow as tf
 import numpy as np
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 from huggingface_hub import hf_hub_download
 from utils.image_processing import preprocess_image
@@ -12,6 +15,8 @@ from utils.image_processing import preprocess_image
 # FastAPI App
 # -----------------------------
 app = FastAPI(title="Mango Disease Prediction API")
+# Serve static files
+app.mount("/results", StaticFiles(directory="results"), name="results")
 
 
 # -----------------------------

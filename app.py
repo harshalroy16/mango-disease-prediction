@@ -443,3 +443,20 @@ if len(history) > 0:
 
 
     st.pyplot(fig)
+
+    # -----------------------------
+# Model Evaluation
+# -----------------------------
+st.header("📈 Model Evaluation")
+
+if os.path.exists("results/confusion_matrix.png"):
+    st.subheader("Confusion Matrix")
+    st.image("results/confusion_matrix.png", use_container_width=True)
+
+if os.path.exists("results/roc_curve.png"):
+    st.subheader("ROC Curve")
+    st.image("results/roc_curve.png", use_container_width=True)
+
+if os.path.exists("results/prediction_histogram.png"):
+    st.subheader("Prediction Histogram")
+    st.image("results/prediction_histogram.png", use_container_width=True)
